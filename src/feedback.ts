@@ -7,9 +7,11 @@ import { systemPrompt } from './prompt';
 export async function generateFeedback({
   query,
   numQuestions = 3,
+  langfuseTraceId,
 }: {
   query: string;
   numQuestions?: number;
+  langfuseTraceId: string;
 }) {
   const userFeedback = await generateObject({
     model: o3MiniModel,
@@ -22,6 +24,13 @@ export async function generateFeedback({
           `Follow up questions to clarify the research direction, max of ${numQuestions}`,
         ),
     }),
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'generateFeedback',
+      metadata: {
+        langfuseTraceId,
+      },
+    },
   });
 
   return userFeedback.object.questions.slice(0, numQuestions);

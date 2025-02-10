@@ -1,8 +1,20 @@
+import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as readline from 'readline';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { LangfuseExporter } from 'langfuse-vercel';
 
 import { deepResearch, writeFinalReport } from './deep-research';
 import { generateFeedback } from './feedback';
+
+// Initialize OTEL SDK
+const sdk = new NodeSDK({
+  traceExporter: new LangfuseExporter(),
+  instrumentations: [getNodeAutoInstrumentations()],
+});
+
+sdk.start();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -20,6 +32,9 @@ function askQuestion(query: string): Promise<string> {
 
 // run the agent
 async function run() {
+  // Initialize Langfuse trace Id
+  const langfuseTraceId = randomUUID();
+
   // Get initial query
   const initialQuery = await askQuestion('What would you like to research? ');
 
@@ -42,6 +57,7 @@ async function run() {
   // Generate follow-up questions
   const followUpQuestions = await generateFeedback({
     query: initialQuery,
+    langfuseTraceId,
   });
 
   console.log(
@@ -68,6 +84,7 @@ ${followUpQuestions.map((q, i) => `Q: ${q}\nA: ${answers[i]}`).join('\n')}
     query: combinedQuery,
     breadth,
     depth,
+    langfuseTraceId,
   });
 
   console.log(`\n\nLearnings:\n\n${learnings.join('\n')}`);
@@ -80,6 +97,7 @@ ${followUpQuestions.map((q, i) => `Q: ${q}\nA: ${answers[i]}`).join('\n')}
     prompt: combinedQuery,
     learnings,
     visitedUrls,
+    langfuseTraceId,
   });
 
   // Save report to file
@@ -88,6 +106,8 @@ ${followUpQuestions.map((q, i) => `Q: ${q}\nA: ${answers[i]}`).join('\n')}
   console.log(`\n\nFinal Report:\n\n${report}`);
   console.log('\nReport has been saved to output.md');
   rl.close();
+
+  await sdk.shutdown();
 }
 
 run().catch(console.error);

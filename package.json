@@ -23,8 +23,11 @@
   "dependencies": {
     "@ai-sdk/openai": "^1.1.9",
     "@mendable/firecrawl-js": "^1.16.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.56.0",
+    "@opentelemetry/sdk-node": "^0.57.1",
     "ai": "^4.1.17",
     "js-tiktoken": "^1.0.17",
+    "langfuse-vercel": "^3.35.1",
     "lodash-es": "^4.17.21",
     "p-limit": "^6.2.0",
     "zod": "^3.24.1"

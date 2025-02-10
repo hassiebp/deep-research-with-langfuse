@@ -27,9 +27,11 @@ async function generateSerpQueries({
   query,
   numQueries = 3,
   learnings,
+  langfuseTraceId,
 }: {
   query: string;
   numQueries?: number;
+  langfuseTraceId: string;
 
   // optional, if provided, the research will continue from the last learning
   learnings?: string[];
@@ -58,6 +60,13 @@ async function generateSerpQueries({
         )
         .describe(`List of SERP queries, max of ${numQueries}`),
     }),
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'generateSerpQueries',
+      metadata: {
+        langfuseTraceId,
+      },
+    },
   });
   console.log(
     `Created ${res.object.queries.length} queries`,
@@ -72,11 +81,13 @@ async function processSerpResult({
   result,
   numLearnings = 3,
   numFollowUpQuestions = 3,
+  langfuseTraceId,
 }: {
   query: string;
   result: SearchResponse;
   numLearnings?: number;
   numFollowUpQuestions?: number;
+  langfuseTraceId: string;
 }) {
   const contents = compact(result.data.map(item => item.markdown)).map(
     content => trimPrompt(content, 25_000),
@@ -100,6 +111,13 @@ async function processSerpResult({
           `List of follow-up questions to research the topic further, max of ${numFollowUpQuestions}`,
         ),
     }),
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'processSerpResult',
+      metadata: {
+        langfuseTraceId,
+      },
+    },
   });
   console.log(
     `Created ${res.object.learnings.length} learnings`,
@@ -113,10 +131,12 @@ export async function writeFinalReport({
   prompt,
   learnings,
   visitedUrls,
+  langfuseTraceId,
 }: {
   prompt: string;
   learnings: string[];
   visitedUrls: string[];
+  langfuseTraceId: string;
 }) {
   const learningsString = trimPrompt(
     learnings
@@ -134,6 +154,13 @@ export async function writeFinalReport({
         .string()
         .describe('Final report on the topic in Markdown'),
     }),
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'writeFinalReport',
+      metadata: {
+        langfuseTraceId,
+      },
+    },
   });
 
   // Append the visited URLs section to the report
@@ -147,17 +174,20 @@ export async function deepResearch({
   depth,
   learnings = [],
   visitedUrls = [],
+  langfuseTraceId,
 }: {
   query: string;
   breadth: number;
   depth: number;
   learnings?: string[];
   visitedUrls?: string[];
+  langfuseTraceId: string;
 }): Promise<ResearchResult> {
   const serpQueries = await generateSerpQueries({
     query,
     learnings,
     numQueries: breadth,
+    langfuseTraceId,
   });
   const limit = pLimit(ConcurrencyLimit);
 
@@ -180,6 +210,7 @@ export async function deepResearch({
             query: serpQuery.query,
             result,
             numFollowUpQuestions: newBreadth,
+            langfuseTraceId,
           });
           const allLearnings = [...learnings, ...newLearnings.learnings];
           const allUrls = [...visitedUrls, ...newUrls];
@@ -200,6 +231,7 @@ export async function deepResearch({
               depth: newDepth,
               learnings: allLearnings,
               visitedUrls: allUrls,
+              langfuseTraceId,
             });
           } else {
             return {
